@@ -8,8 +8,10 @@ fun PerformanceCommentDto.toDomain(): PerformanceComment {
         commentId = commentId,
         performanceId = performanceId,
         userId = userId,
-        username = username,
-        content = content,
+        username = username
+            ?.takeIf { it.isNotBlank() }
+            ?: "Unknown",
+        content = content.orEmpty(),
         createdAt = createdAt
     )
 }

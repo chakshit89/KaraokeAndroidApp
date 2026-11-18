@@ -30,8 +30,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -51,20 +53,24 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -105,6 +111,9 @@ private val SoraFontFamily = FontFamily(
     Font(R.font.sora_regular, FontWeight.Normal)
 )
 
+val BrightGold = Color(0xFFFFD700)
+val WarmGoldGlow = Color(0xFFFFA000)
+
 @Composable
 fun PerformanceScreen(
     recordingPath: String?,
@@ -120,6 +129,9 @@ fun PerformanceScreen(
     onPublishClick: (Int) -> Unit = {},
     melodyComparisonResult: MelodyComparisonResult? = null
 ) {
+    var hasNavigatedToPublish by rememberSaveable {
+        mutableStateOf(false)
+    }
     if (LocalInspectionMode.current) {
         PerformanceScreenContent(
             recordingPath = recordingPath,
@@ -160,10 +172,14 @@ fun PerformanceScreen(
         performanceState.isPublished,
         performanceState.performanceId
     ) {
-        if (performanceState.isPublished) {
+        if (
+            performanceState.isPublished &&
+            !hasNavigatedToPublish
+        ) {
             val id = performanceState.performanceId
                 ?: return@LaunchedEffect
 
+            hasNavigatedToPublish = true
             onPublishClick(id)
         }
     }
@@ -423,7 +439,54 @@ private fun PerformanceTopBar(
             textAlign = TextAlign.Center,
             modifier = Modifier.align(Alignment.Center)
         )
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.align(Alignment.CenterEnd)
+                .clickable(onClick = onSettingsClick)
+        ) {
+            Icon(
+                imageVector = Icons.Default.ExitToApp,
+                contentDescription = "Exit",
+                tint = BrightGold,
+                modifier = Modifier
+                    .size(20.dp)
+                    .drawBehind {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    WarmGoldGlow.copy(alpha = 0.65f),
+                                    BrightGold.copy(alpha = 0.25f),
+                                    Color.Transparent
+                                ),
+                                radius = size.maxDimension * 0.9f
+                            ),
+                            radius = size.maxDimension * 0.9f
+                        )
+                    }
+            )
+
+            Text(
+                text = "Home",
+                color = BrightGold,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                style = TextStyle(
+                    shadow = Shadow(
+                        color = WarmGoldGlow,
+                        offset = Offset(0f, 0f),
+                        blurRadius = 14f
+                    )
+                )
+            )
+        }
+
     }
+
+
+
+
 }
 
 @Composable
@@ -454,11 +517,11 @@ private fun PerformanceScore(
 
         "B" -> Color(0xFFFFB74D) to "Average"
 
-        "C" -> Color(0xFFFFB74D) to "Below Average"
+        "C" -> Color(0xFFFFB74D) to "Need Improvement"
 
-        "D" -> Color(0xFFFF5252) to "Poor"
+        "D" -> Color(0xFFFF5252) to "Need Improvement"
 
-        "E" -> Color(0xFFFF5252) to "Very Poor"
+        "E" -> Color(0xFFFF5252) to "Need Improvement"
 
         else -> NeonPurple to "Performance"
     }
@@ -902,10 +965,9 @@ private fun PublishButton(
             Text(
                 text = "PUBLISH PERFORMANCE",
                 color = Color(0xFF68137C),
-                fontSize = 15.sp,
+                fontSize = 14.sp,
                 fontFamily = SoraFontFamily,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 0.5.sp
+                fontWeight = FontWeight.SemiBold,
             )
         }
     }
@@ -1016,6 +1078,7 @@ private fun HighlightItem(
             text = title,
             color = TextPrimary,
             fontFamily = SoraFontFamily,
+            fontWeight = FontWeight.Medium,
             fontSize = 16.sp,
             modifier = Modifier.weight(1f)
         )

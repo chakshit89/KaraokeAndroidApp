@@ -54,6 +54,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.karoke.myoyasing.core.utils.downloadLyrics
+import com.karoke.myoyasing.core.utils.parseLyrics
+import com.karoke.myoyasing.core.utils.recordinglogic.LyricsLine
+import com.karoke.myoyasing.presentation.featureUI.recording.KaraokeCurrentLine
+import com.karoke.myoyasing.presentation.featureUI.recording.cleanLyricText
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.sin
@@ -81,6 +86,7 @@ fun MiniPlayerDialog(
     artistName: String,
     thumbnail: Painter,
     audioUrl: String,
+    lyricsUrl: String,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -88,6 +94,50 @@ fun MiniPlayerDialog(
     var isSeeking by remember { mutableStateOf(false) }
 
     // Read the actual ExoPlayer position continuously.
+    val speedOptions =
+        listOf(
+            0.25f,
+            0.5f,
+            0.75f,
+            1f,
+            1.5f,
+            2f,
+            3f,
+            4f
+        )
+
+    val speed =
+        controller.playbackSpeed
+    LaunchedEffect(Unit) {
+        controller.updatePlaybackSpeed(1f)
+    }
+    LaunchedEffect(
+        lyricsUrl
+    ) {
+
+        try {
+
+            val lyricsText =
+                downloadLyrics(
+                    lyricsUrl
+                )
+
+            val parsedLyrics =
+                parseLyrics(
+                    lyricsText
+                )
+
+            controller.updateLyrics(
+                parsedLyrics
+            )
+
+        } catch (
+            e: Exception
+        ) {
+
+            e.printStackTrace()
+        }
+    }
     LaunchedEffect(controller) {
         while (true) {
             controller.updateProgress()
@@ -318,6 +368,110 @@ fun MiniPlayerDialog(
                         inactiveTickColor = Color.Transparent
                     )
                 )
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
+
+                Row(
+                    modifier =
+                        Modifier.fillMaxWidth(),
+
+                    horizontalArrangement =
+                        Arrangement.Center,
+
+                    verticalAlignment =
+                        Alignment.CenterVertically
+                ) {
+
+                    Text(
+                        text = "-",
+
+                        modifier =
+                            Modifier
+                                .clickable {
+
+                                    val currentIndex =
+                                        speedOptions.indexOf(speed)
+
+                                    if (currentIndex > 0) {
+
+                                        controller.updatePlaybackSpeed(
+
+                                            speedOptions[
+                                                currentIndex - 1
+                                            ]
+                                        )
+                                    }
+                                }
+                                .padding(12.dp),
+
+                        color = Color.White,
+
+                        fontSize = 24.sp
+                    )
+
+                    Spacer(
+                        Modifier.width(14.dp)
+                    )
+
+                    Text(
+                        text = "${speed}x",
+
+                        color = PlayerNeonPink,
+
+                        fontWeight =
+                            FontWeight.Bold,
+
+                        fontSize = 18.sp
+                    )
+
+                    Spacer(
+                        Modifier.width(14.dp)
+                    )
+
+                    Text(
+                        text = "+",
+
+                        modifier =
+                            Modifier
+                                .clickable {
+
+                                    val currentIndex =
+                                        speedOptions.indexOf(speed)
+
+                                    if (
+                                        currentIndex <
+                                        speedOptions.lastIndex
+                                    ) {
+
+                                        controller.updatePlaybackSpeed(
+
+                                            speedOptions[
+                                                currentIndex + 1
+                                            ]
+                                        )
+                                    }
+                                }
+                                .padding(12.dp),
+
+                        color = Color.White,
+
+                        fontSize = 24.sp
+                    )
+                }
+
+                Spacer(
+                    modifier = Modifier.height(20.dp)
+                )
+
+                MiniPlayerLyrics(
+                    lyrics = controller.lyrics,
+                    currentIndex =
+                        controller.currentLyricIndex,
+
+                    positionMs =
+                        controller.playbackPosition
+                )
 
 
                 Row(
@@ -348,27 +502,27 @@ fun MiniPlayerDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
 
-                    PlayerSideButton(
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.Download,
-                                contentDescription = "Download song",
-                                tint = Color.White,
-                                modifier = Modifier.size(30.dp)
-                            )
-                        },
-                        onClick = {
-                            downloadSong(
-                                context = context,
-                                songTitle = songTitle,
-                                audioUrl = audioUrl
-                            )
-                        }
-                    )
+//                    PlayerSideButton(
+//                        icon = {
+//                            Icon(
+//                                imageVector = Icons.Default.Download,
+//                                contentDescription = "Download song",
+//                                tint = Color.White,
+//                                modifier = Modifier.size(30.dp)
+//                            )
+//                        },
+//                        onClick = {
+//                            downloadSong(
+//                                context = context,
+//                                songTitle = songTitle,
+//                                audioUrl = audioUrl
+//                            )
+//                        }
+//                    )
 
                     Box(
                         modifier = Modifier
-                            .size(76.dp)
+                            .size(56.dp)
                             .shadow(
                                 elevation = 24.dp,
                                 shape = CircleShape,
@@ -386,7 +540,7 @@ fun MiniPlayerDialog(
                                 )
                             )
                             .border(
-                                width = 3.dp,
+                                width = 2.dp,
                                 color = Color(0xFFE15BFF),
                                 shape = CircleShape
                             )
@@ -416,24 +570,24 @@ fun MiniPlayerDialog(
                     }
 
 
-                    PlayerSideButton(
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Share song",
-                                tint = Color.White,
-                                modifier = Modifier.size(30.dp)
-                            )
-                        },
-                        onClick = {
-                            shareSong(
-                                context = context,
-                                songTitle = songTitle,
-                                artistName = artistName,
-                                audioUrl = audioUrl
-                            )
-                        }
-                    )
+//                    PlayerSideButton(
+//                        icon = {
+//                            Icon(
+//                                imageVector = Icons.Default.Share,
+//                                contentDescription = "Share song",
+//                                tint = Color.White,
+//                                modifier = Modifier.size(30.dp)
+//                            )
+//                        },
+//                        onClick = {
+//                            shareSong(
+//                                context = context,
+//                                songTitle = songTitle,
+//                                artistName = artistName,
+//                                audioUrl = audioUrl
+//                            )
+//                        }
+//                    )
                 }
 
             }
@@ -583,7 +737,7 @@ private fun PlaybackWaveform(
 
     // Fixed bar heights make the waveform recognizable and stable.
     val heights = remember {
-        List( thirtyBars ) { index ->
+        List(thirtyBars) { index ->
             val wave = sin(index * 0.72).toFloat()
             (0.22f + (wave + 1f) * 0.34f).coerceIn(0.15f, 0.95f)
         }
@@ -604,7 +758,7 @@ private fun PlaybackWaveform(
             }
 
             val barHeight = size.height *
-                (baseHeight + animatedAdjustment).coerceIn(0.12f, 1f)
+                    (baseHeight + animatedAdjustment).coerceIn(0.12f, 1f)
 
             val x = index * totalBarWidth + barWidth / 2f
             val top = (size.height - barHeight) / 2f
@@ -687,6 +841,7 @@ private fun downloadSong(
         ).show()
     }
 }
+
 private fun shareSong(
     context: Context,
     songTitle: String,
@@ -721,9 +876,92 @@ private fun shareSong(
         ).show()
     }
 }
+
 private fun sanitizeFileName(title: String): String {
     return title
         .replace(Regex("[\\\\/:*?\"<>|]"), "_")
         .trim()
         .ifBlank { "OyaSing_Song" }
+}
+
+
+@Composable
+private fun MiniPlayerLyrics(
+    lyrics: List<LyricsLine>,
+    currentIndex: Int,
+    positionMs: Long
+) {
+
+    val previous =
+        lyrics.getOrNull(
+            currentIndex - 1
+        )
+
+    val current =
+        lyrics.getOrNull(
+            currentIndex
+        )
+
+    val next =
+        lyrics.getOrNull(
+            currentIndex + 1
+        )
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(180.dp),
+
+        horizontalAlignment =
+            Alignment.CenterHorizontally,
+
+        verticalArrangement =
+            Arrangement.Center
+    ) {
+
+        Text(
+            text =
+                previous?.text
+                    ?.let(::cleanLyricText)
+                    ?: "",
+
+            color =
+                Color.White.copy(
+                    alpha = 0.25f
+                ),
+
+            fontSize = 14.sp
+        )
+
+        Spacer(
+            Modifier.height(12.dp)
+        )
+
+        current?.let {
+
+            KaraokeCurrentLine(
+                lyric = it,
+                positionMs = positionMs
+            )
+        }
+
+        Spacer(
+            Modifier.height(12.dp)
+        )
+
+        Text(
+            text =
+                next?.text
+                    ?.let(::cleanLyricText)
+                    ?: "",
+
+            color =
+                Color.White.copy(
+                    alpha = 0.25f
+                ),
+
+            fontSize = 14.sp
+        )
+    }
 }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
@@ -37,10 +38,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -103,9 +107,7 @@ fun PublishPerformanceScreen(
         koinViewModel()
 ) {
 
-    BackHandler(
-        enabled = true
-    ) {
+    BackHandler(enabled = true) {
         onBackClick()
     }
     var description by remember {
@@ -207,7 +209,6 @@ fun PublishPerformanceScreen(
                 Box(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Back arrow aligned to the left.
                     IconButton(
                         onClick =  { onBackClick() },
                         modifier = Modifier
@@ -223,18 +224,63 @@ fun PublishPerformanceScreen(
                         )
                     }
 
-                    // Title centered relative to the entire screen.
+
                     Text(
                         text = "Publish",
                         color = PublishPurple,
                         fontFamily = FontFamily(
-                            Font(R.font.sora_extrabold)
+                            Font(R.font.sora_bold)
                         ),
                         textAlign = TextAlign.Center,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontSize = 22.sp,
+
                         modifier = Modifier.align(Alignment.Center)
                     )
+
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)
+                            .clickable(onClick = onSettingsClick)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ExitToApp,
+                            contentDescription = "Exit",
+                            tint = BrightGold,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .drawBehind {
+                                    drawCircle(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                WarmGoldGlow.copy(alpha = 0.65f),
+                                                BrightGold.copy(alpha = 0.25f),
+                                                Color.Transparent
+                                            ),
+                                            radius = size.maxDimension * 0.9f
+                                        ),
+                                        radius = size.maxDimension * 0.9f
+                                    )
+                                }
+                        )
+
+                        Text(
+                            text = "Home",
+                            color = BrightGold,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            style = TextStyle(
+                                shadow = Shadow(
+                                    color = WarmGoldGlow,
+                                    offset = Offset(0f, 0f),
+                                    blurRadius = 14f
+                                )
+                            )
+                        )
+                    }
+
+
                 }
             }
 
@@ -344,51 +390,51 @@ fun PublishPerformanceScreen(
 
                 Spacer(Modifier.height(23.dp))
 
-                SectionLabel("COLLABORATORS")
-
-                Spacer(Modifier.height(7.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(58.dp)
-                        .clip(RoundedCornerShape(13.dp))
-                        .background(PublishSurface)
-                        .clickable { onCollaboratorsClick() }
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.People,
-                        contentDescription = null,
-                        tint = PublishMuted,
-                        modifier = Modifier.size(22.dp)
-                    )
-
-                    Spacer(Modifier.width(18.dp))
-
-                    Text(
-                        text = "Tag friends...",
-                        color = Color(0xFF777078),
-                        fontSize = 15.sp,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "+",
-                            color = PublishPurple,
-                            fontSize = 16.sp
-                        )
-                        Text(
-                            text = "ADD",
-                            color = PublishPurple,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
+//                SectionLabel("COLLABORATORS")
+//
+//                Spacer(Modifier.height(7.dp))
+//
+//                Row(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .height(58.dp)
+//                        .clip(RoundedCornerShape(13.dp))
+//                        .background(PublishSurface)
+//                        .clickable { onCollaboratorsClick() }
+//                        .padding(horizontal = 16.dp),
+//                    verticalAlignment = Alignment.CenterVertically
+//                ) {
+//                    Icon(
+//                        imageVector = Icons.Default.People,
+//                        contentDescription = null,
+//                        tint = PublishMuted,
+//                        modifier = Modifier.size(22.dp)
+//                    )
+//
+//                    Spacer(Modifier.width(18.dp))
+//
+//                    Text(
+//                        text = "Tag friends...",
+//                        color = Color(0xFF777078),
+//                        fontSize = 15.sp,
+//                        modifier = Modifier.weight(1f)
+//                    )
+//
+//                    Column(
+//                        horizontalAlignment = Alignment.CenterHorizontally
+//                    ) {
+//                        Text(
+//                            text = "+",
+//                            color = PublishPurple,
+//                            fontSize = 16.sp
+//                        )
+//                        Text(
+//                            text = "ADD",
+//                            color = PublishPurple,
+//                            fontSize = 12.sp
+//                        )
+//                    }
+//                }
 
                 Spacer(Modifier.height(16.dp))
 
@@ -494,7 +540,7 @@ fun PublishPerformanceScreen(
 
                 Spacer(Modifier.height(20.dp))
 
-                // Post Performance Button
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -536,7 +582,7 @@ fun PublishPerformanceScreen(
                             // selected from the hashtag suggestion chips.
                             val hashtagIds = selectedHashtagIds.toList()
 
-                            // Call the publishing ViewModel.
+
                             publishPerformanceViewModel.publishPerformance(
                                 performanceId = currentPerformanceId,
                                 description = description.trim(),

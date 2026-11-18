@@ -96,4 +96,9 @@ object AppDataStore {
             preferences.remove(isLoginKey)
         }
     }
+
+    suspend fun isCurrentUser(currentUserId: String): Boolean {
+        val savedUserId = getUserid()
+        return savedUserId == currentUserId
+    }
 }

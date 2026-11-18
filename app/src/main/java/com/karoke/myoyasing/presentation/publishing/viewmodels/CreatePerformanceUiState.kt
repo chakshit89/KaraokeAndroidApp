@@ -9,6 +9,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class CreatePerformanceUiState(
@@ -123,5 +124,14 @@ class CreatePerformanceViewModel(
         _uiState.value = _uiState.value.copy(
             errorMessage = null
         )
+    }
+
+    fun resetPublishState() {
+        _uiState.update {
+            it.copy(
+                isPublished = false,
+                performanceId = null
+            )
+        }
     }
 }

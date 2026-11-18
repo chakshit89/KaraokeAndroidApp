@@ -41,12 +41,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.Player
 import com.karoke.myoyasing.R
 import com.karoke.myoyasing.core.utils.toAbsoluteUrl
+import com.karoke.myoyasing.data.local.AppDataStore
 import com.karoke.myoyasing.domain.model.FeedItem
 import com.karoke.myoyasing.presentation.feed.viewmodel.FeedViewModel
 import com.karoke.myoyasing.presentation.feed.viewmodel.PerformanceCommentsViewModel
 import com.karoke.myoyasing.presentation.feed.viewmodel.PerformanceLikeUiState
 import com.karoke.myoyasing.presentation.feed.viewmodel.PerformanceLikeViewModel
 import com.karoke.myoyasing.presentation.feed.viewmodel.SharePerformanceViewModel
+import com.karoke.myoyasing.presentation.feed.viewmodel.UserFollowViewModel
 import kotlinx.coroutines.delay
 
 import org.koin.androidx.compose.koinViewModel
@@ -93,6 +95,9 @@ fun OyaFeedScreen(
 
     var selectedCommentCount by remember {
         mutableIntStateOf(0)
+    }
+    val commentCounts = remember {
+        mutableStateMapOf<String, Int>()
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     val likeUiState by likeViewModel.uiState.collectAsStateWithLifecycle()
@@ -222,11 +227,7 @@ fun OyaFeedScreen(
             }
 
             uiState.feedItems.isEmpty() -> {
-                Text(
-                    text = "No performances available yet",
-                    color = FeedWhite,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                EmptyFeedState()
             }
 
             else -> {
@@ -263,6 +264,8 @@ fun OyaFeedScreen(
 
                     FeedPerformancePage(
                         item = feedItems[page],
+                        commentCount = commentCounts[feedItems[page].id]
+                            ?: feedItems[page].commentCount,
                         isPlaying = isPlaying,
                         onPlaybackToggle = {
                             feedAudioPlayer.togglePlayback()
@@ -283,8 +286,12 @@ fun OyaFeedScreen(
                             if (performanceId != null) {
                                 selectedPerformanceId = performanceId
 
-                                // Get initial count from Feed API
-                                selectedCommentCount = currentItem.commentCount
+                                // Use the updated count if available.
+                                val count = commentCounts.getOrPut(currentItem.id) {
+                                    currentItem.commentCount
+                                }
+
+                                selectedCommentCount = count
 
                                 commentsViewModel.loadComments(
                                     performanceId = performanceId,
@@ -357,25 +364,25 @@ fun OyaFeedScreen(
 
                         Spacer(modifier = Modifier.weight(1f))
 
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = FeedWhite,
-                            modifier = Modifier
-                                .size(25.dp)
-                                .clickable { onSearchClick() }
-                        )
+//                        Icon(
+//                            imageVector = Icons.Default.Search,
+//                            contentDescription = "Search",
+//                            tint = FeedWhite,
+//                            modifier = Modifier
+//                                .size(25.dp)
+//                                .clickable { onSearchClick() }
+//                        )
 
-                        Spacer(Modifier.width(20.dp))
-
-                        Icon(
-                            imageVector = Icons.Default.NotificationsNone,
-                            contentDescription = "Notifications",
-                            tint = FeedWhite,
-                            modifier = Modifier
-                                .size(25.dp)
-                                .clickable { onNotificationClick() }
-                        )
+//                        Spacer(Modifier.width(20.dp))
+//
+//                        Icon(
+//                            imageVector = Icons.Default.NotificationsNone,
+//                            contentDescription = "Notifications",
+//                            tint = FeedWhite,
+//                            modifier = Modifier
+//                                .size(25.dp)
+//                                .clickable { onNotificationClick() }
+//                        )
                     }
 
                     Row(
@@ -474,7 +481,7 @@ fun OyaFeedScreen(
                 isLoadingMore = commentsUiState.isLoadingMore,
                 hasMoreComments = commentsUiState.hasMorePages,
                 isSendingComment = commentsUiState.isAddingComment,
-
+                addCommentError = commentsUiState.addCommentError,
                 error = commentsUiState.error,
 
                 currentUserId = currentUserId,
@@ -483,13 +490,25 @@ fun OyaFeedScreen(
                 commentDeleted = commentsUiState.commentDeleted,
 
                 onCommentAddedHandled = {
-                    selectedCommentCount++
+                    val key = performanceId.toString()
+
+                    val newCount = (commentCounts[key] ?: selectedCommentCount) + 1
+
+                    commentCounts[key] = newCount
+                    selectedCommentCount = newCount
+
                     commentsViewModel.clearEvents()
                 },
 
                 onCommentDeletedHandled = {
-                    selectedCommentCount =
-                        (selectedCommentCount - 1).coerceAtLeast(0)
+                    val key = performanceId.toString()
+
+                    val newCount = (
+                            commentCounts[key] ?: selectedCommentCount
+                            ).minus(1).coerceAtLeast(0)
+
+                    commentCounts[key] = newCount
+                    selectedCommentCount = newCount
 
                     commentsViewModel.clearEvents()
                 },
@@ -535,6 +554,7 @@ fun OyaFeedScreen(
 @Composable
 private fun FeedPerformancePage(
     item: FeedItem,
+    commentCount: Int,
     isPlaying: Boolean,
     onPlaybackToggle: () -> Unit,
     onFollowClick: () -> Unit,
@@ -547,7 +567,71 @@ private fun FeedPerformancePage(
     var liked by remember(item.id, item.isLiked) {
         mutableStateOf(item.isLiked)
     }
+    var currentUserIdowner by remember {
+        mutableStateOf<String?>(null)
+    }
+    val followViewModel: UserFollowViewModel = koinViewModel()
+    val followUiState by followViewModel.uiState.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
+
+    var wasFollowRequestLoading by remember(item.id) {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(Unit) {
+        currentUserIdowner = AppDataStore.getUserid()
+    }
+
+    LaunchedEffect(
+        followUiState.isLoading,
+        followUiState.isFollowing,
+        followUiState.error
+    ) {
+        if (followUiState.isLoading) {
+            wasFollowRequestLoading = true
+        } else if (wasFollowRequestLoading) {
+
+            if (followUiState.error == null) {
+                val message = if (followUiState.isFollowing) {
+                    "User followed successfully"
+                } else {
+                    "User unfollowed successfully"
+                }
+
+                Toast.makeText(
+                    context,
+                    message,
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                Toast.makeText(
+                    context,
+                    followUiState.error,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            wasFollowRequestLoading = false
+        }
+    }
+
+    val targetUserId = item.user.id.toString().toIntOrNull()
+
+    val isOwnProfile = currentUserIdowner == item.user.id.toString()
+
+    val handleFollowClick = {
+        if (
+            !isOwnProfile &&
+            targetUserId != null &&
+            !followUiState.isLoading
+        ) {
+            if (followUiState.isFollowing) {
+                followViewModel.unfollowUser(targetUserId)
+            } else {
+                followViewModel.followUser(targetUserId)
+            }
+        }
+    }
     var likeCount by remember(item.id, item.likes) {
         mutableIntStateOf(item.likes)
     }
@@ -617,14 +701,14 @@ private fun FeedPerformancePage(
                 R.drawable.siz,
                 R.drawable.seven,
 
-            )
+                )
 
             val randomImage = remember(item.id) {
                 defaultImages.random()
             }
 
             AsyncImage(
-                model=randomImage,
+                model = randomImage,
                 contentDescription = "Performance by ${item.user.name}",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -698,7 +782,9 @@ private fun FeedPerformancePage(
                         .size(45.dp)
                         .clip(CircleShape)
                         .border(2.dp, FeedPurple, CircleShape)
-                        .clickable { onFollowClick() }
+                        .clickable {
+
+                        }
                 )
             } else {
                 Image(
@@ -749,7 +835,7 @@ private fun FeedPerformancePage(
 
             FeedAction(
                 icon = Icons.Default.ChatBubble,
-                count = item.commentCount.toString(),
+                count = commentCount.toString(),
                 onClick = onCommentClick
             )
 
@@ -824,7 +910,10 @@ private fun FeedPerformancePage(
                             .size(45.dp)
                             .clip(CircleShape)
                             .border(1.dp, Color.White.copy(alpha = 0.7f), CircleShape)
-                            .clickable { onFollowClick() }
+                            .clickable {
+
+
+                            }
                     )
                 } else {
                     Image(
@@ -845,9 +934,8 @@ private fun FeedPerformancePage(
                 Text(
                     text = item.user.name.ifBlank { "UnKnownSinger" },
                     color = Color.White,
-                    fontFamily = SoraFontFamily,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
@@ -871,37 +959,42 @@ private fun FeedPerformancePage(
 
                 Spacer(modifier = Modifier.width(5.dp))
 
-                // Follow button
-                Text(
-                    text = "Follow",
-                    color = Color(0xFF371147),
-                    fontSize = 14.sp,
-                    fontFamily = SoraFontFamily,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(Color(0xFFC863FB))
-                        .clickable {
-                            onFollowClick()
-                        }
-                        .padding(
-                            horizontal = 18.dp,
-                            vertical = 7.dp
-                        )
-                )
+                if (currentUserIdowner != null && !isOwnProfile) {
+                    Text(
+                        text = if (followUiState.isFollowing) {
+                            "Unfollow"
+                        } else {
+                            "Follow"
+                        },
+                        color = Color(0xFF371147),
+                        fontSize = 14.sp,
+                        fontFamily = SoraFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color(0xFFC863FB))
+                            .clickable {
+                                handleFollowClick()
+                            }
+                            .padding(
+                                horizontal = 18.dp,
+                                vertical = 7.dp
+                            )
+                    )
+                }
             }
+
 
             Text(
                 text = "Description:  " + item.description.orEmpty(),
                 color = FeedWhite,
-                fontFamily = SoraFontFamily,
-                fontSize = 20.sp,
-                lineHeight = 21.sp,
+                fontSize = 18.sp,
+                lineHeight = 18.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
-
+            Spacer(Modifier.height(5.dp))
 //            Text(
 //                text = buildString {
 //                    append(item.song.title)
@@ -951,8 +1044,7 @@ private fun FeedPerformancePage(
                     text = item.song.title,
                     color = Color(0xFFE3D6E3),
                     fontSize = 19.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    maxLines = 1
                 )
             }
         }
@@ -1022,6 +1114,50 @@ private fun shareAudio(
 
     context.startActivity(chooser)
 }
+
+
+@Composable
+private fun EmptyFeedState() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF100D15))
+            .padding(horizontal = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+
+
+        Icon(
+            imageVector = Icons.Default.VideoLibrary,
+            contentDescription = "No feeds",
+            tint = Color(0xFFE6A6FF),
+            modifier = Modifier.size(110.dp)
+        )
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Text(
+            text = "No feeds are available yet",
+            color = Color.White,
+            fontFamily = SoraFontFamily,
+            fontSize = 23.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "There are no performances to show right now.\nCheck back later!",
+            color = FeedMuted,
+            fontFamily = SoraFontFamily,
+            fontSize = 15.sp,
+            lineHeight = 23.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+    }
+}
+
 
 
 

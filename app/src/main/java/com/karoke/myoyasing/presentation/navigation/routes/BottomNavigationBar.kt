@@ -33,8 +33,9 @@ import androidx.compose.ui.unit.sp
 fun BottomNavigationBar(
     selectedTab: Int,
     onHomeClick: () -> Unit,
-    onFeedClick: () -> Unit,
-    onProfileClick: () -> Unit
+    onFeedClick: () -> Unit
+//    onProfileClick: () -> Unit
+
 ) {
     val items = listOf(
         BottomNavItem(
@@ -46,12 +47,12 @@ fun BottomNavigationBar(
             title = "Feed",
             icon = Icons.Outlined.VideoLibrary,
             onClick = onFeedClick
-        ),
-        BottomNavItem(
-            title = "Profile",
-            icon = Icons.Outlined.Person,
-            onClick = onProfileClick
         )
+//        BottomNavItem(
+//            title = "Profile",
+//            icon = Icons.Outlined.Person,
+//            onClick = onProfileClick
+//        )
     )
 
     Row(

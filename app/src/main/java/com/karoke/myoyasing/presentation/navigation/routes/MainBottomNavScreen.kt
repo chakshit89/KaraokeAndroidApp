@@ -24,7 +24,7 @@ fun MainBottomNavScreen(
     val selectedTab = when (currentRoute) {
         AppRoutes.HOME -> 0
         AppRoutes.FEED -> 1
-        AppRoutes.PROFILE -> 2
+//        AppRoutes.PROFILE -> 2
         else -> 0
     }
 
@@ -43,12 +43,12 @@ fun MainBottomNavScreen(
                     navController.navigate(AppRoutes.FEED) {
                         launchSingleTop = true
                     }
-                },
-                onProfileClick = {
-                    navController.navigate(AppRoutes.PROFILE) {
-                        launchSingleTop = true
-                    }
                 }
+//            onProfileClick = {
+//                   navController.navigate(AppRoutes.PROFILE) {
+//                       launchSingleTop = true
+//                  }
+//                }
             )
         }
     ) { paddingValues ->

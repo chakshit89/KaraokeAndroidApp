@@ -3,19 +3,33 @@ package com.karoke.myoyasing.presentation.featureUI.Homesong
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.karoke.myoyasing.core.utils.recordinglogic.LyricsLine
 
 class SongPreviewController(
     private val player: ExoPlayer
 ) {
+
+    var playbackSpeed by mutableFloatStateOf(1f)
+        private set
+
+    var lyrics by mutableStateOf<List<LyricsLine>>(emptyList())
+        private set
+
+    var currentLyricIndex by mutableIntStateOf(-1)
+        private set
     var currentSongId by mutableStateOf<String?>(null)
         private set
 
@@ -31,12 +45,20 @@ class SongPreviewController(
         private set
 
     fun updateProgress() {
-        playbackPosition = player.currentPosition.coerceAtLeast(0L)
 
-        playbackDuration = player.duration
-            .takeIf { it != androidx.media3.common.C.TIME_UNSET }
-            ?.coerceAtLeast(0L)
-            ?: 0L
+        playbackPosition =
+            player.currentPosition.coerceAtLeast(0L)
+
+        playbackDuration =
+            player.duration
+                .takeIf { it != C.TIME_UNSET }
+                ?.coerceAtLeast(0L)
+                ?: 0L
+
+        currentLyricIndex =
+            lyrics.indexOfLast {
+                playbackPosition >= it.timeMs
+            }
     }
 
     fun seekTo(positionMs: Long) {
@@ -120,6 +142,22 @@ class SongPreviewController(
         player.release()
     }
 
+
+    fun updatePlaybackSpeed(speed: Float) {
+
+        playbackSpeed = speed
+
+        player.playbackParameters =
+            PlaybackParameters(speed)
+    }
+    fun updateLyrics(
+        lines: List<LyricsLine>
+    ) {
+        lyrics = lines
+    }
+
+
+
 }
 
 @Composable
@@ -141,3 +179,4 @@ fun rememberSongPreviewController(): SongPreviewController {
     return controller
 
 }
+

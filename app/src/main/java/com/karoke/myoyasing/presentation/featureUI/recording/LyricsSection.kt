@@ -118,7 +118,7 @@ fun LyricsSection(
     }
 }
 @Composable
-private fun KaraokeCurrentLine(
+fun KaraokeCurrentLine(
     lyric: LyricsLine,
     positionMs: Long
 ) {
@@ -179,7 +179,7 @@ private fun KaraokeCurrentLine(
     )
 
 }
-private fun cleanLyricText(text: String): String {
+fun cleanLyricText(text: String): String {
     return text
         .replace(
             Regex("""<\d{2}:\d{2}(?:\.\d{1,3})?>"""),

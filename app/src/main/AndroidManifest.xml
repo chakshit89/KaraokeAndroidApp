@@ -10,9 +10,9 @@
         android:usesCleartextTraffic="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher_app_icon"
+        android:icon="@mipmap/ic_launcher_app_icon_latest"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_app_icon_round"
+        android:roundIcon="@mipmap/ic_launcher_app_icon_latest_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyOyaSing" >
 

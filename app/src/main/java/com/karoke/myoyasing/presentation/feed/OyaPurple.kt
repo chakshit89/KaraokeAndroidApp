@@ -37,6 +37,7 @@ import coil.compose.AsyncImage
 import com.karoke.myoyasing.domain.model.PerformanceComment
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -74,7 +75,7 @@ fun PerformanceCommentsBottomSheet(
     isLoadingMore: Boolean,
     hasMoreComments: Boolean,
     isSendingComment: Boolean,
-
+    addCommentError: String? = null,
     currentUserId: String ,
     commentAdded: Boolean = false,
     commentDeleted: Boolean = false,
@@ -95,13 +96,27 @@ fun PerformanceCommentsBottomSheet(
 
     if (!visible) return
     val currentUserIdLong = currentUserId?.toLongOrNull()
+    val coroutineScope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
     val context = LocalContext.current
     val listState = rememberLazyListState()
     var commentText by remember { mutableStateOf("") }
+// Holds comments locally while the POST request is running.
+    val optimisticComments = remember(performanceId) {
+        mutableStateListOf<PerformanceCommentUi>()
+    }
 
+// Avoid showing both the temporary comment and the server response.
+    val visibleComments = (
+            optimisticComments.filterNot { pending ->
+                commentAdded && comments.any {
+                    it.userId == pending.userId &&
+                            it.content == pending.content
+                }
+            } + comments
+            ).distinctBy { it.commentId }
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
@@ -109,9 +124,11 @@ fun PerformanceCommentsBottomSheet(
         if (commentAdded) {
 
             commentText = ""
+            optimisticComments.clear()
 
             keyboardController?.hide()
             focusManager.clearFocus()
+
             listState.animateScrollToItem(0)
 
             Toast.makeText(
@@ -121,6 +138,20 @@ fun PerformanceCommentsBottomSheet(
             ).show()
 
             onCommentAddedHandled()
+        }
+    }
+
+    LaunchedEffect(addCommentError) {
+        if (!addCommentError.isNullOrBlank()) {
+
+            // Remove the temporary comment if the API fails.
+            optimisticComments.clear()
+
+            Toast.makeText(
+                context,
+                addCommentError,
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -219,7 +250,7 @@ fun PerformanceCommentsBottomSheet(
                 ) {
 
                     items(
-                        items = comments,
+                        items = visibleComments,
                         key = { it.commentId }
                     ) { comment ->
                         CommentItem(
@@ -234,7 +265,7 @@ fun PerformanceCommentsBottomSheet(
                     }
 
 
-                    if (isLoading && comments.isEmpty()) {
+                    if (isLoading && visibleComments.isEmpty()) {
                         item {
                             LoadingComments()
                         }
@@ -264,7 +295,7 @@ fun PerformanceCommentsBottomSheet(
                         }
                     }
                     // Empty state
-                    if (!isLoading && error == null && comments.isEmpty()) {
+                    if (!isLoading && error == null && visibleComments.isEmpty()) {
                         item {
                             EmptyComments()
                         }
@@ -300,11 +331,26 @@ fun PerformanceCommentsBottomSheet(
                 onTextChange = { commentText = it },
                 isSending = isSendingComment,
                 onSend = {
+
                     val message = commentText.trim()
 
                     if (message.isNotEmpty() && !isSendingComment) {
+
+                        // Create temporary comment immediately.
+                        val optimisticComment = PerformanceCommentUi(
+                            commentId = -System.currentTimeMillis(),
+                            userId = currentUserIdLong ?: 0L,
+                            username = "You",
+                            profileImageUrl = null,
+                            content = message,
+                            createdAt = Instant.now().toString()
+                        )
+
+                        optimisticComments.add(0, optimisticComment)
+                        coroutineScope.launch {
+                            listState.animateScrollToItem(0)
+                        }
                         onSendComment(message)
-                        commentText=""
 
                     }
                 }
@@ -648,96 +694,3 @@ fun PerformanceComment.toUi(): PerformanceCommentUi {
     )
 }
 
-//@Preview(
-//    name = "OyaSing Comments Bottom Sheet",
-//    showBackground = true,
-//    showSystemUi = true,
-//    device = "spec:width=393dp,height=873dp,dpi=440"
-//)
-//@Composable
-//fun PerformanceCommentsBottomSheetPreview() {
-//
-//    val previewComments = listOf(
-//
-//        PerformanceCommentUi(
-//            commentId = 1L,
-//            userId = 101L,
-//            username = "Sarah Williams",
-//            profileImageUrl = null,
-//            content = "Amazing performance! Loved your pitch control. ❤️🎤",
-//            createdAt = "2 min ago",
-//            likes = 124,
-//            isLiked = true
-//        ),
-//
-//        PerformanceCommentUi(
-//            commentId = 2L,
-//            userId = 102L,
-//            username = "Alex Johnson",
-//            profileImageUrl = null,
-//            content = "Your voice is absolutely beautiful! Keep singing.",
-//            createdAt = "10 min ago",
-//            likes = 89,
-//            isLiked = false
-//        ),
-//
-//        PerformanceCommentUi(
-//            commentId = 3L,
-//            userId = 103L,
-//            username = "Emily Rose",
-//            profileImageUrl = null,
-//            content = "This is one of my favourite songs and you nailed it! 🔥",
-//            createdAt = "20 min ago",
-//            likes = 56,
-//            isLiked = true
-//        ),
-//
-//        PerformanceCommentUi(
-//            commentId = 4L,
-//            userId = 104L,
-//            username = "David Smith",
-//            profileImageUrl = null,
-//            content = "Incredible voice! Waiting for your next performance.",
-//            createdAt = "35 min ago",
-//            likes = 32,
-//            isLiked = false
-//        ),
-//
-//        PerformanceCommentUi(
-//            commentId = 5L,
-//            userId = 105L,
-//            username = "Jessica",
-//            profileImageUrl = null,
-//            content = "Wowww! Such a lovely performance. ❤️",
-//            createdAt = "1 hour ago",
-//            likes = 18,
-//            isLiked = false
-//        )
-//    )
-//
-//    MaterialTheme {
-//
-//        Box(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .background(Color(0xFF100D15)),
-//            contentAlignment = Alignment.BottomCenter
-//        ) {
-//
-//            PerformanceCommentsBottomSheet(
-//                visible = true,
-//                performanceId = 1001L,
-//                comments = previewComments,
-//                totalComments = 1248,
-//                isLoading = false,
-//                isLoadingMore = false,
-//                hasMoreComments = true,
-//                isSendingComment = false,
-//                onDismiss = {},
-//                onSendComment = {},
-//                onLoadMore = {},
-//                onDeleteComment = {}
-//            )
-//        }
-//    }
-//}

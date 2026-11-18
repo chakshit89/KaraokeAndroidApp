@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,14 +37,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,7 +83,8 @@ fun LoginScreen(
     error: String? = null,
     onClose: () -> Unit = {}
 ) {
-
+    val termsUrl: String = "https://sites.google.com/view/myoyasing/home"
+    val privacyUrl: String = "https://sites.google.com/view/myoyasing/home"
     var phoneNumber by remember {
         mutableStateOf("")
     }
@@ -85,6 +92,8 @@ fun LoginScreen(
     var selectedCountryCode by remember {
         mutableStateOf("+1")
     }
+
+    val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     Box(
         modifier = Modifier
@@ -177,7 +186,7 @@ fun LoginScreen(
                     text = stringResource(R.string.welcome_back),
                     color = OyaText,
                     fontFamily = FontFamily(Font(R.font.sora_bold)),
-                    fontSize = 34.sp,
+                    fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
                 )
@@ -189,7 +198,7 @@ fun LoginScreen(
                 Text(
                     text = stringResource(R.string.sign_in_to_start_your_performance),
                     color = Color(0xFFBEB5BE),
-                    fontSize = 12.sp,
+                    fontSize = 10.sp,
                     fontFamily = FontFamily(Font(R.font.sora_medium)),
                     textAlign = TextAlign.Center
                 )
@@ -205,7 +214,6 @@ fun LoginScreen(
                     color = OyaMutedText,
                     fontSize = 10.sp,
                     fontFamily = FontFamily(Font(R.font.sora_medium)),
-                    fontWeight = FontWeight.Bold,
                     letterSpacing = 0.8.sp
                 )
 
@@ -391,14 +399,65 @@ fun LoginScreen(
                         modifier = Modifier.height(33.dp)
                     )
 
+                    val termsPolicyPrefix = stringResource(R.string.terms_policy)
+                    val termsPoliciesText = stringResource(R.string.terms_policies)
+                    val privacyPoliciesText = stringResource(R.string.privacy_policies)
 
-                    Text(
-                        text = stringResource(R.string.terms_policy) +
-                                "Terms of Service and Privacy Policy.",
-                        color = Color(0xFF857D85),
-                        fontSize = 10.sp,
-                        fontFamily = FontFamily(Font(R.font.sora_regular)),
-                        textAlign = TextAlign.Center
+                    val annotatedTermsString = remember(
+                        termsPolicyPrefix,
+                        termsPoliciesText,
+                        privacyPoliciesText,
+                        termsUrl,
+                        privacyUrl
+                    ) {
+                        buildAnnotatedString {
+                            append(termsPolicyPrefix)
+                            pushStringAnnotation(tag = "URL", annotation = termsUrl)
+                            withStyle(
+                                style = SpanStyle(
+                                    color = OyaPurpleLight,
+                                    textDecoration = TextDecoration.Underline
+                                )
+                            ) {
+                                append(termsPoliciesText)
+                            }
+                            pop()
+
+                            append(" • ")
+
+                            pushStringAnnotation(tag = "URL", annotation = privacyUrl)
+                            withStyle(
+                                style = SpanStyle(
+                                    color = OyaPurpleLight,
+                                    textDecoration = TextDecoration.Underline
+                                )
+                            ) {
+                                append(privacyPoliciesText)
+                            }
+                            pop()
+                        }
+                    }
+
+                    ClickableText(
+                        text = annotatedTermsString,
+                        modifier = Modifier.fillMaxWidth(),
+                        style = TextStyle(
+                            color = Color(0xFF857D85),
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily(Font(R.font.sora_regular)),
+                            textAlign = TextAlign.Center
+                        ),
+                        onClick = { offset ->
+                            annotatedTermsString
+                                .getStringAnnotations(tag = "URL", start = offset, end = offset)
+                                .firstOrNull()?.let { annotation ->
+                                    try {
+                                        uriHandler.openUri(annotation.item)
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                        }
                     )
 
 

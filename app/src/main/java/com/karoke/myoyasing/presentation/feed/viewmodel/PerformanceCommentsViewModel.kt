@@ -197,15 +197,25 @@ class PerformanceCommentsViewModel(
                     content = message
                 ).onSuccess { newComment ->
 
-                    // Only update the currently opened performance.
                     if (currentPerformanceId == performanceId) {
 
-                        // Immediately insert the POST response into the list.
                         val currentState = _uiState.value
 
-                        val updatedComments =
-                            (listOf(newComment) + currentState.comments)
-                                .distinctBy { it.commentId }
+                        // Use the original message if backend returns null or blank content.
+                        val validComment = newComment.copy(
+                            username = newComment.username
+                                .takeIf { it.isNotBlank() && it != "Unknown" }
+                                ?: "You",
+
+                            content = newComment.content
+                                .takeIf { it.isNotBlank() }
+                                ?: message
+                        )
+
+                        // Immediately update the comments list.
+                        val updatedComments = (
+                                listOf(validComment) + currentState.comments
+                                ).distinctBy { it.commentId }
 
                         _uiState.value = currentState.copy(
                             comments = updatedComments,
@@ -213,6 +223,7 @@ class PerformanceCommentsViewModel(
                             isLoading = false,
                             isLoadingMore = false,
                             commentAdded = true,
+                            addCommentError = null,
                             error = null
                         )
 

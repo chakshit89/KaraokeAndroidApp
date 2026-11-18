@@ -44,6 +44,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.karoke.myoyasing.R
+import com.karoke.myoyasing.core.utils.MicrophoneCheckResult
+import com.karoke.myoyasing.core.utils.MicrophoneDetector
+
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 private val PrepBackground = Color(0xFF080A0F)
 private val PrepPurple = Color(0xFFE5ACFF)
@@ -78,18 +84,68 @@ fun KaraokePermissionsScreen(
         mutableStateOf(hasMicrophonePermission())
     }
 
+    var showMicCheckDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var isCheckingMic by remember {
+        mutableStateOf(false)
+    }
+
+    var micCheckResult by remember {
+        mutableStateOf<MicrophoneCheckResult?>(null)
+    }
+
+    var micCheckRequestId by remember {
+        mutableIntStateOf(0)
+    }
+
+    fun startMicrophoneCheck() {
+
+        microphoneGranted = true
+
+        micCheckResult = null
+        isCheckingMic = true
+
+        showMicCheckDialog = true
+
+        // Trigger a fresh check every time
+        micCheckRequestId++
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
+
         microphoneGranted = hasMicrophonePermission()
 
-        if (!granted || !microphoneGranted) {
+        if (granted && microphoneGranted) {
+
+            startMicrophoneCheck()
+
+        } else {
+
             Toast.makeText(
                 context,
-                "Please enable microphone permission from app settings.",
+                "Microphone permission is required to sing.",
                 Toast.LENGTH_LONG
             ).show()
         }
+    }
+    fun requestMicrophoneCheck() {
+
+        if (!hasMicrophonePermission()) {
+
+            microphoneGranted = false
+
+            permissionLauncher.launch(
+                Manifest.permission.RECORD_AUDIO
+            )
+
+            return
+        }
+
+        startMicrophoneCheck()
     }
 
     // Refresh the permission state when returning from Android Settings.
@@ -106,6 +162,25 @@ fun KaraokePermissionsScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
+    LaunchedEffect(showMicCheckDialog, micCheckRequestId) {
+
+        if (showMicCheckDialog) {
+
+            isCheckingMic = true
+            micCheckResult = null
+
+            delay(1800)
+
+            val result = withContext(Dispatchers.IO) {
+                MicrophoneDetector.checkConnectedMicrophone(context)
+            }
+
+            micCheckResult = result
+            isCheckingMic = false
+        }
+    }
+
+
 
     fun openAppSettings() {
         val intent = Intent(
@@ -318,7 +393,7 @@ fun KaraokePermissionsScreen(
 
                 Spacer(Modifier.height(24.dp))
 
-                // Grant Microphone Access
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -326,13 +401,7 @@ fun KaraokePermissionsScreen(
                         .clip(RoundedCornerShape(12.dp))
                         .background(PrepPurple)
                         .clickable {
-                            if (!hasMicrophonePermission()) {
-                                permissionLauncher.launch(
-                                    Manifest.permission.RECORD_AUDIO
-                                )
-                            } else {
-                                microphoneGranted = true
-                            }
+                            requestMicrophoneCheck()
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -383,19 +452,8 @@ fun KaraokePermissionsScreen(
                             Color(0xFF242426)
                         }
                     )
-                    .clickable {
-                        if (hasMicrophonePermission()) {
-                            microphoneGranted = true
-                            onStartSingingClick()
-                        } else {
-                            microphoneGranted = false
-
-                            Toast.makeText(
-                                context,
-                                "Please enable microphone permission from app settings.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
+                    .clickable(enabled = microphoneGranted) {
+                        requestMicrophoneCheck()
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -413,6 +471,30 @@ fun KaraokePermissionsScreen(
             }
 
             Spacer(Modifier.height(8.dp))
+        }
+
+        if (showMicCheckDialog) {
+
+            MicrophoneSystemCheckDialog(
+                result = micCheckResult,
+                isChecking = isCheckingMic,
+
+                onContinue = {
+                    showMicCheckDialog = false
+                    onStartSingingClick()
+                },
+
+                onRetry = {
+                    micCheckResult = null
+                    isCheckingMic = true
+                    micCheckRequestId++
+                },
+
+                onDismiss = {
+                    showMicCheckDialog = false
+                    isCheckingMic = false
+                }
+            )
         }
     }
 }

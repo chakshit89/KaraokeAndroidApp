@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -75,12 +76,12 @@ fun OtpVerificationScreen(
     }
 
     var remainingSeconds by remember {
-        mutableStateOf(38)
+        mutableIntStateOf(59)
     }
 
-    LaunchedEffect(Unit) {
-        while (remainingSeconds > 0) {
-            delay(1000)
+    LaunchedEffect(remainingSeconds) {
+        if (remainingSeconds > 0) {
+            delay(1000L)
             remainingSeconds--
         }
     }
@@ -119,21 +120,22 @@ fun OtpVerificationScreen(
                 .windowInsetsPadding(WindowInsets.navigationBars)
         ) {
 
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp)
                     .background(Color(0xFF121212))
-                    .padding(horizontal = 18.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 18.dp)
             ) {
 
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Back",
                     tint = Color(0xFFE8B2FF),
+
                     modifier = Modifier
                         .size(25.dp)
+                        .align(Alignment.CenterStart)
                         .clickable {
                             onBack()
                         }
@@ -146,6 +148,7 @@ fun OtpVerificationScreen(
                 Text(
                     text = stringResource(R.string.verify),
                     color = Color(0xFFE4B0FA),
+                    modifier = Modifier.align(Alignment.Center),
                     fontSize = 20.sp,
                     fontFamily = FontFamily(Font(R.font.sora_bold) ),
 
@@ -205,7 +208,7 @@ fun OtpVerificationScreen(
                 Text(
                     text = stringResource(R.string.otp_verification),
                     color = Color(0xFFF1EAF2),
-                    fontSize = 34.sp,
+                    fontSize = 30.sp,
                     fontFamily = FontFamily(Font(R.font.sora_bold) ),
                     textAlign = TextAlign.Center
                 )
@@ -217,7 +220,7 @@ fun OtpVerificationScreen(
                 Text(
                     text = stringResource(R.string.verification_subtitle),
                     color = Color(0xFFD1C3D4),
-                    fontSize = 12.sp,
+                    fontSize = 10.sp,
                     fontFamily = FontFamily(Font(R.font.sora_medium) ),
                     lineHeight = 24.sp,
                     textAlign = TextAlign.Center
@@ -279,6 +282,7 @@ fun OtpVerificationScreen(
                 )
 
 
+
                 Text(
                     text = if (remainingSeconds > 0) {
                         "Resend in 00:${remainingSeconds.toString().padStart(2, '0')}"
@@ -291,7 +295,8 @@ fun OtpVerificationScreen(
                         enabled = remainingSeconds == 0 && !isLoading
                     ) {
                         onResendOtp()
-                        remainingSeconds = 38
+
+                        remainingSeconds = 59
                     }
                 )
 
